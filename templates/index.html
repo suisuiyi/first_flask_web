@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ name }} 's watchlist</title>
+    <title>{{ user.name }} 's watchlist</title>
     <link rel="stylesheet" href="{{ url_for('static', filename="style.css") }}" type="text/css">
 </head>
 <body>
 <img alt="Avatar" class = "avatar" src="{{ url_for('static', filename="images/avatar.jpg") }}" >
-    {{ name }}'s Watchlist
+    {{ user.name }}'s Watchlist
     {# 使用length过滤器获取movies变量的长度 #}
     <p>{{ movies|length }} Titles</p>
     <ul class="movie-list">
