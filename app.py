@@ -8,34 +8,25 @@
 @desc:
 """
 
-from flask import Flask, url_for
+from flask import Flask, render_template
 
 app = Flask(__name__)
 
 
 @app.route("/")
-@app.route("/index")
-@app.route("/home")
-def hello():
-    return '<h1> Hello Totoro!<h1> <img src ="http://helloflask.com/totoro.gif">'
+def index():
+    return render_template('index.html', name=name, movies=movies)
 
 
-@app.route('/user/<name>')
-def user_page(name):
-    return 'User: %s' % name
-
-
-@app.route('/test')
-def test_url_for():
-    print(url_for('hello'))
-
-    print(url_for('user_page', name='nano'))
-    print(url_for('user_page', name='peter'))
-    print(url_for('test_url_for'))
-
-    print(url_for('test_url_for', num=2))
-
-    return 'Test Page'
+name = 'peter'
+movies = [
+    {'title': '流浪地球', 'year': '2019'},
+    {'title': '千与千寻', 'year': '2001'},
+    {'title': '海上钢琴师', 'year': '1998'},
+    {'title': '复仇者联盟4', 'year': '2019'},
+    {'title': '疯狂的外星人', 'year': '2019'},
+    {'title': '寄生虫', 'year': '2019'}
+]
 
 
 if __name__ == '__main__':
