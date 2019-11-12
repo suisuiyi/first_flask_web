@@ -10,6 +10,7 @@
     {% endblock %}
 </head>
 <body>
+
     {% for message in get_flashed_messages() %}
         <div class="alert">{{ message }}</div>
     {% endfor %}
@@ -20,7 +21,13 @@
     <nav>
         <ul>
             <li>
-                <a href="{{ url_for('index') }}">Home</a>
+                <a href="{{ url_for('index') }}">主页</a>
+                {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('settings') }}">设置</a></li>
+                <li><a href="{{ url_for('logout') }}">登出</a></li>
+                {% else %}
+                <li><a href="{{ url_for('login') }}">登录</a></li>
+                {% endif %}
             </li>
         </ul>
     </nav>

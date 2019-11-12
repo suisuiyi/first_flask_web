@@ -13,6 +13,9 @@ import click
 
 from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+
 
 WIN = sys.platform.startswith('win')
 if WIN:
@@ -25,6 +28,27 @@ app.config['SQLALCHEMY_DATABASE_URI'] = prefix + \
     os.path.join(app.root_path, 'data.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # 关闭对模型修改的监控
 db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+
+@app.cli.command()
+@click.option('--username', prompt=True, help='The username used to login in.')
+@click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True, help='The password used to login in.')
+def admin(username, password):
+    """create user"""
+    db.create_all()
+    user = User.query.first();
+    if user is not None:
+        click.echo('Updating user...')
+        user.username = username
+        user.set_password(password)  # 设置密码
+    else:
+        click.echo('Creating user')
+        user = User(username=username, name="Admin")
+        user.set_password(password)
+        db.session.add(user)
+    db.session.commit()
+    click.echo('Done')
+
 
 
 @app.cli.command()
@@ -58,9 +82,24 @@ def initdb(drop):
     db.create_all()
     click.echo("Init database.")
 
-class User(db.Model):
+
+@login_manager.user_loader
+def load_user(user_id):
+    user = User.query.get(int(user_id))
+    return user
+
+
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(20))
+    username = db.Column(db.String(20))
+    password_hash = db.Column(db.String(128))
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def validate_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 
 class Movie(db.Model):
@@ -69,9 +108,39 @@ class Movie(db.Model):
     year = db.Column(db.String(4))  # 电影年份
 
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        if not username or not password:
+            flash('无效的输入.')
+            return redirect(url_for('login'))
+
+        user = User.query.first()
+        if username == user.username and user.validate_password(password):
+            login_user(user)
+            flash("登录成功")
+            return redirect(url_for('index'))
+
+        flash("无效的用户名和密码")
+        return redirect(url_for('login'))
+    return render_template('login.html')
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("已登出")
+    return redirect(url_for('index'))
+
+
 @app.route("/", methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
+        if not current_user.is_authenticated:
+            return redirect(url_for('index'))
         title = request.form.get('title')
         year = request.form.get('year')
         if not title or not year or len(year) > 4 or len(title) > 60:
@@ -88,6 +157,7 @@ def index():
 
 
 @app.route('/movie/edit/<int:movie_id>', methods=['GET', 'POST'])
+@login_required
 def edit(movie_id):
     movie = Movie.query.get_or_404(movie_id)
     if request.method == 'POST':
@@ -107,12 +177,27 @@ def edit(movie_id):
 
 
 @app.route('/movie/delete/<int:movie_id>', methods=['POST'])
+@login_required
 def delete(movie_id):
     movie = Movie.query.get_or_404(movie_id)
     db.session.delete(movie)
     db.session.commit()
     flash('Item deleted')
     return redirect(url_for('index'))
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    if request.method == 'POST':
+        name = request.form['name']
+        if not name or len(name) > 20:
+            flash("无效的输入")
+            return redirect(url_for('index'))
+        current_user.name = name
+        db.session.commit()
+        flash("设置已更新")
+        return redirect(url_for('index'))
+    return render_template('setting.html')
 
 @app.errorhandler(404)
 def page_not_found(e):
