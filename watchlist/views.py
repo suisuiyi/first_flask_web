@@ -95,4 +95,4 @@ def settings():
         db.session.commit()
         flash("设置已更新")
         return redirect(url_for('index'))
-    return render_template('setting.html')
+    return render_template('settings.html')
